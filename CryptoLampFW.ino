@@ -1,46 +1,3 @@
-/*
-   Based on example arduino ESP8266 Access point, copyright follows:
-   Copyright (c) 2015, Majenko Technologies
-   All rights reserved.
-
-   Redistribution and use in source and binary forms, with or without modification,
-   are permitted provided that the following conditions are met:
-
- * * Redistributions of source code must retain the above copyright notice, this
-     list of conditions and the following disclaimer.
-
- * * Redistributions in binary form must reproduce the above copyright notice, this
-     list of conditions and the following disclaimer in the documentation and/or
-     other materials provided with the distribution.
-
- * * Neither the name of Majenko Technologies nor the names of its
-     contributors may be used to endorse or promote products derived from
-     this software without specific prior written permission.
-   ?)(O
-   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-   DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-   ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-   ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-  Modifications copyright 2018 Breandan O'Shaughnessy All rights reserved
-
-  This code allows connection as an access point to set wifi SSID and password settings for future connections
-
-
-*/
-
-/* Create a WiFi access point and provide a web server on it. */
-
-/*todo
-   boot in two modes depending on whether a button was held, button will also be used to enter OTA update mode
-*/
-
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
@@ -51,7 +8,8 @@
 
 /* Set these to your desired credentials. */
 const char *APSsid = "ethermoodlight";
-const char *APPassword = "thereisnospoon";
+const char *kUUID = "test";
+String *uuid; 
 String ssid;
 String password;
 bool configureMode = false;
@@ -60,7 +18,8 @@ int green = 512;
 int red = 512;
 String payload;
 float change = 0;
-
+String *checkURL;
+String updateURL;
 
 ESP8266WebServer server(80);
 
@@ -153,8 +112,63 @@ void setupClient()
 
   pinMode(D5, OUTPUT);
   pinMode(D6, OUTPUT);
+
+  getURL();
+}
+void getURL()
+{
+  bool keepTrying = true;
+
+  while(keepTrying)
+  {
+  digitalWrite(D5, HIGH);
+  digitalWrite(D6, LOW);
+  while(WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    digitalWrite(D5, !digitalRead(D5));
+    digitalWrite(D6, !digitalRead(D6));
+    }
+    
+  HTTPClient http;
+
+    Serial.print("[HTTP] begin...\n");
+
+    String myURL = *checkURL + *uuid;
+    
+    http.begin(myURL.c_str()); //HTTP
+
+    //  Serial.print("[HTTP] GET...\n");
+    // start connection and send HTTP header
+    int httpCode = http.GET();
+
+    // httpCode will be negative on error
+    if (httpCode > 0) {
+      // HTTP header has been send and Server response header has been handled
+      Serial.printf("[HTTP] GET... code: %d\n", httpCode);
+
+      // file found at server
+      if (httpCode == HTTP_CODE_OK) {
+        updateURL = http.getString();
+        Serial.println(updateURL);
+        keepTrying = false;
+      }
+    } else {
+      Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+      delay(1000);
+      digitalWrite(D5, !digitalRead(D5));
+      digitalWrite(D6, !digitalRead(D6));
+    }
+    
+    
+    http.end();
+  }
 }
 void setup() {
+
+  checkURL = new String("http://foc-electronics.com/cryptolamps/geturl.php?UUID=");
+  uuid = new String(kUUID);
+  
   pinMode(D0, INPUT);
   digitalWrite(D0, HIGH);
 
@@ -190,7 +204,7 @@ void clientLoop()
     Serial.print("[HTTP] begin...\n");
     // configure traged server and url
     //http.begin("https://foc-electronics.com:443/webservices/ethchange.php"); //HTTPS
-    http.begin("http://foc-electronics.com/webservices/ethchange.php"); //HTTP
+    http.begin(updateURL.c_str()); //HTTP
 
     //  Serial.print("[HTTP] GET...\n");
     // start connection and send HTTP header
