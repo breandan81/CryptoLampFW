@@ -8,7 +8,7 @@
 
 /* Set these to your desired credentials. */
 const char *APSsid = "ethermoodlight";
-const char *kUUID = "test";
+const char *kUUID = "2738f8a0-cb79-11e8-a8d5-f2801f1b9fd1";
 String *uuid; 
 String ssid;
 String password;
@@ -112,7 +112,8 @@ void setupClient()
 
   pinMode(D5, OUTPUT);
   pinMode(D6, OUTPUT);
-
+  Serial.print("UUID is: ");
+  Serial.println(kUUID);
   getURL();
 }
 void getURL()
@@ -201,7 +202,7 @@ void clientLoop()
 
     HTTPClient http;
 
-    Serial.print("[HTTP] begin...\n");
+    //Serial.print("[HTTP] begin...\n");
     // configure traged server and url
     //http.begin("https://foc-electronics.com:443/webservices/ethchange.php"); //HTTPS
     http.begin(updateURL.c_str()); //HTTP
@@ -213,12 +214,12 @@ void clientLoop()
     // httpCode will be negative on error
     if (httpCode > 0) {
       // HTTP header has been send and Server response header has been handled
-      Serial.printf("[HTTP] GET... code: %d\n", httpCode);
+      //Serial.printf("[HTTP] GET... code: %d\n", httpCode);
 
       // file found at server
       if (httpCode == HTTP_CODE_OK) {
         payload = http.getString();
-        Serial.println(payload);
+      //  Serial.println(payload);
       }
 
     } else {
@@ -244,9 +245,9 @@ void clientLoop()
       red = result;
       green = 1023 - result;
     }
-    Serial.println(green);
+//    Serial.println(green);
 
-    Serial.println(red);
+  //  Serial.println(red);
     delay(1000);
   }
   else
