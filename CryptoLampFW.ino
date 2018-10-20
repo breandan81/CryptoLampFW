@@ -5,10 +5,11 @@
 //#include <ESP8266WiFiMulti.h>
 #include <ESP8266HTTPClient.h>
 #include <stdio.h>
+#include <ArduinoJson.h>
 
 /* Set these to your desired credentials. */
 const char *APSsid = "ethermoodlight";
-const char *kUUID = "2738f8a0-cb79-11e8-a8d5-f2801f1b9fd1";
+const char *kUUID = "breandantestlamp";
 String *uuid; 
 String ssid;
 String password;
@@ -16,6 +17,7 @@ bool configureMode = false;
 //ESP8266WiFiMulti WiFiMulti;
 int green = 512;
 int red = 512;
+int blue = 512;
 String payload;
 float change = 0;
 String *checkURL;
@@ -112,6 +114,8 @@ void setupClient()
 
   pinMode(D5, OUTPUT);
   pinMode(D6, OUTPUT);
+  pinMode(D7, OUTPUT);
+  digitalWrite(D7, HIGH);
   Serial.print("UUID is: ");
   Serial.println(kUUID);
   getURL();
@@ -219,42 +223,43 @@ void clientLoop()
       // file found at server
       if (httpCode == HTTP_CODE_OK) {
         payload = http.getString();
-      //  Serial.println(payload);
+        Serial.println(payload);
       }
 
     } else {
       Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
     }
+    //parse the json here
 
+    const size_t bufferSize = JSON_OBJECT_SIZE(3) + 40 + 20;
+  DynamicJsonBuffer jsonBuffer(bufferSize);
+  Serial.println(payload);
+  const char* json = payload.c_str();
+
+  JsonObject& root = jsonBuffer.parseObject(json);
+
+  red = root["red"]; // 1023
+  green = root["green"]; // 1023
+  blue = root["blue"]; // 1023
+
+    //done parsing
+
+    Serial.println("Parsed some json, this look good?");
+    Serial.println(green);
+    Serial.println(red);
+    Serial.println(blue);
     http.end();
-    change = payload.toFloat() / 10;
-    Serial.println(change);
-    if (change < -1)
-    {
-      red = 0;
-      green = 1023;
-    }
-    else if (change > 1)
-    {
-      red = 1023;
-      green = 0;
-    }
-    else
-    {
-      float result = 1023.0 * ((change + 1.0) / 2);
-      red = result;
-      green = 1023 - result;
-    }
-//    Serial.println(green);
-
-  //  Serial.println(red);
-    delay(1000);
+    analogWrite(D5, 1023-red);
+    analogWrite(D6, 1023-green);
+    analogWrite(D7, 1023-blue);
+    delay(30000);
   }
   else
   {
     Serial.println("can't seem to connect to wifi");
     Serial.println(green);
     Serial.println(red);
+    Serial.println(blue);
     if (red == 0)
     {
       red = 1023;
@@ -267,8 +272,9 @@ void clientLoop()
     }
     delay(1000);
   }
-  analogWrite(D6, red);
-  analogWrite(D5, green);
+  analogWrite(D5, 1023-red);
+  analogWrite(D6, 1023-green);
+  analogWrite(D7, 1023-blue);
 
   //delay(1000);
 
